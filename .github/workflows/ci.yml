@@ -9,7 +9,6 @@ on:
 jobs:
   CI:
     runs-on: ubuntu-16.04
-
     steps:
       # Setup part
       - name: Checkout repository
@@ -27,7 +26,7 @@ jobs:
           sudo apt install antlr4
           pip install --user numpy decorator attrs tornado psutil xgboost
           pip install --user mypy orderedset antlr4-python3-runtime
-          pip install --user torch torchvision
+          pip install --user torch torchvision pytest pylint
       - name: Install TVM (Step 1)
         working-directory: 3rdparty/tvm
         run: |
@@ -57,4 +56,5 @@ jobs:
       # Test part
       - name: Tests
         run: |
-          python tvm_stage/__init__.py
+          python -m pytest -v tests -W ignore::DeprecationWarning
+          python -m pylint sustech_nas
