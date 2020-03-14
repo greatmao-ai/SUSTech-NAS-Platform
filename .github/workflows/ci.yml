@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  CI:
+    runs-on: ubuntu-16.04
+
+    steps:
+      # Setup part
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Setup python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.x'
+          architecture: 'x64'
+      - name: Initialize submodules
+        run: |
+          git submodule update --recursive --init
+      - name: Install packages
+        run: |
+          sudo apt install antlr4
+          pip install --user numpy decorator attrs tornado psutil xgboost
+          pip install --user mypy orderedset antlr4-python3-runtime
+          pip install --user torch torchvision
+      - name: Install TVM (Step 1)
+        working-directory: 3rdparty/tvm
+        run: |
+          mkdir build
+          cd build
+          wget http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz
+          tar -xf clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz
+          mv clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-16.04 llvm
+      - name: Install TVM (Step 2)
+        working-directory: 3rdparty/tvm/build
+        run: >-
+          cmake
+          "-DUSE_LLVM=llvm/bin/llvm-config"
+          "-DUSE_SORT=ON"
+          "-DUSE_RPC=ON"
+          "-DUSE_GRAPH_RUNTIME=ON"
+          ..
+      - name: Install TVM (Step 3)
+        working-directory: 3rdparty/tvm/build
+        run: |
+          make -j4
+      - name: Install TVM (Step 4)
+        working-directory: 3rdparty/tvm
+        run: |
+          cd python; python setup.py install --user; cd ..
+          cd topi/python; python setup.py install --user; cd ../..
+      # Test part
+      - name: Tests
+        run: |
+          python tvm_stage/__init__.py
